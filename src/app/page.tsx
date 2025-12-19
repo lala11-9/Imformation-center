@@ -73,7 +73,7 @@ export default function Home() {
               <span style={projectBadgeStyle}>{memo.project}</span>
               <span style={tagBadgeStyle}>{memo.tag}</span>
             </div>
-            <p style={{ whiteSpace: 'pre-wrap', color: '#444' }}>{memo.content}</p>
+            <p style={{ whiteSpace: 'pre-wrap', color: '#080707ff' }}>{memo.content}</p>
             {memo.url && (
               <a href={memo.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', fontSize: '0.9rem' }}>
                 🔗 関連リンクへ飛ぶ
@@ -86,8 +86,53 @@ export default function Home() {
   );
 }
 
-const inputStyle = { padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '1rem' };
-const buttonStyle = { padding: '12px', backgroundColor: '#0070f3', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' };
-const cardStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '8px', borderLeft: '5px solid #0070f3', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' };
-const projectBadgeStyle = { backgroundColor: '#e1f0ff', color: '#0070f3', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' };
-const tagBadgeStyle = { backgroundColor: '#eee', color: '#666', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem' };
+// --- デザインの設定（ここを強化しました！） ---
+const inputStyle = { 
+  padding: '12px', 
+  borderRadius: '8px', 
+  border: '2px solid #cbd5e1', // 枠線を少し太く、見やすく
+  fontSize: '1rem', 
+  fontWeight: '600', // 文字を太く
+  color: '#1e293b',  // 文字色をかなり濃いグレーに
+  backgroundColor: '#f8fafc', // 入力欄の中をほんのり明るいグレーに
+  outline: 'none'
+};
+
+const buttonStyle = { 
+  padding: '14px', 
+  backgroundColor: '#0f172a', // ボタンを濃い紺色にして引き締める
+  color: '#fff', 
+  border: 'none', 
+  borderRadius: '8px', 
+  cursor: 'pointer', 
+  fontWeight: 'bold',
+  fontSize: '1.1rem',
+  marginTop: '10px'
+};
+
+const cardStyle = { 
+  backgroundColor: '#fff', 
+  padding: '20px', 
+  borderRadius: '12px', 
+  borderLeft: '8px solid #3b82f6', // 左端の線を太く
+  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)', 
+  marginBottom: '20px' 
+};
+
+const projectBadgeStyle = { 
+  backgroundColor: '#dbeafe', 
+  color: '#1e40af', // 濃い青
+  padding: '4px 12px', 
+  borderRadius: '6px', 
+  fontSize: '0.9rem', 
+  fontWeight: '800' // 超太字
+};
+
+const tagBadgeStyle = { 
+  backgroundColor: '#f1f5f9', 
+  color: '#475569', // 濃いグレー
+  padding: '4px 12px', 
+  borderRadius: '6px', 
+  fontSize: '0.9rem',
+  fontWeight: '600'
+};
