@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 
-// メモ1件分のデータの形
 interface Memo {
   id: number;
   project: string;
@@ -15,13 +14,11 @@ export default function Home() {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // 入力フォームの状態
   const [project, setProject] = useState('');
   const [tag, setTag] = useState('');
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
 
-  // 保存ボタンを押した時の処理
   const handleSave = () => {
     if (!project || !content) {
       alert("案件名と内容は必須です！");
@@ -35,22 +32,19 @@ export default function Home() {
       url
     };
     setMemos([newMemo, ...memos]);
-    // 入力欄をクリア
     setProject(''); setTag(''); setContent(''); setUrl('');
   };
 
-  // 検索条件に合うメモだけを絞り込む
   const filteredMemos = memos.filter(memo => 
-    memo.project.includes(searchQuery) || 
-    memo.tag.includes(searchQuery) || 
-    memo.content.includes(searchQuery)
+    memo.project.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    memo.tag.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    memo.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <main style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#fdfdfd' }}>
       <h1 style={{ color: '#333', textAlign: 'center' }}>おもいやり情報ハブ（α版）</h1>
       
-      {/* --- 入力エリア --- */}
       <section style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
         <h3>🚀 新しい決定事項・リンクを登録</h3>
         <div style={{ display: 'grid', gap: '10px' }}>
@@ -62,7 +56,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* --- 検索エリア --- */}
       <section style={{ marginBottom: '20px' }}>
         <input 
           type="text" 
@@ -73,7 +66,6 @@ export default function Home() {
         />
       </section>
 
-      {/* --- 表示エリア --- */}
       <section>
         {filteredMemos.map(memo => (
           <div key={memo.id} style={cardStyle}>
@@ -81,4 +73,21 @@ export default function Home() {
               <span style={projectBadgeStyle}>{memo.project}</span>
               <span style={tagBadgeStyle}>{memo.tag}</span>
             </div>
-            <p style={{ whiteSpace: 'pre-wrap', color
+            <p style={{ whiteSpace: 'pre-wrap', color: '#444' }}>{memo.content}</p>
+            {memo.url && (
+              <a href={memo.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', fontSize: '0.9rem' }}>
+                🔗 関連リンクへ飛ぶ
+              </a>
+            )}
+          </div>
+        ))}
+      </section>
+    </main>
+  );
+}
+
+const inputStyle = { padding: '10px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '1rem' };
+const buttonStyle = { padding: '12px', backgroundColor: '#0070f3', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' };
+const cardStyle = { backgroundColor: '#fff', padding: '15px', borderRadius: '8px', borderLeft: '5px solid #0070f3', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' };
+const projectBadgeStyle = { backgroundColor: '#e1f0ff', color: '#0070f3', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' };
+const tagBadgeStyle = { backgroundColor: '#eee', color: '#666', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem' };
