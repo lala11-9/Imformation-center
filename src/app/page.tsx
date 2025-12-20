@@ -58,7 +58,7 @@ export default function Home() {
     <main style={{ padding: '40px 50px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, -apple-system, sans-serif', color: '#37352f' }}>
       {/* タイトルエリア */}
       <h1 style={{ fontSize: '2.5rem', fontWeight: '700', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-        <span style={{ fontSize: '3rem' }}>💾</span> security knowledge
+        <span style={{ fontSize: '3rem' }}></span> Material Storage
       </h1>
 
       {/* チーム用登録フォーム */}
