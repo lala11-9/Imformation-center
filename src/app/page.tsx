@@ -3,17 +3,16 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabaseクライアントの初期化
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- スタイル定義（コードの外に出してスッキリさせました） ---
+// --- スタイル定義 ---
 const inputStyle: React.CSSProperties = { width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', marginBottom: '8px', boxSizing: 'border-box' };
 const buttonStyle: React.CSSProperties = { backgroundColor: '#2383e2', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' };
 const secondaryButtonStyle: React.CSSProperties = { padding: '5px 10px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white', cursor: 'pointer' };
-const deleteButtonStyle: React.CSSProperties = { padding: '4px 8px', borderRadius: '4px', border: 'none', backgroundColor: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '12px' };
+const deleteButtonStyle: React.CSSProperties = { padding: '4px 8px', borderRadius: '4px', border: 'none', backgroundColor: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontSize: '11px' };
 const sideSectionStyle: React.CSSProperties = { backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '8px', marginBottom: '20px', border: '1px solid #eee' };
 const tagBadgeStyle: React.CSSProperties = { backgroundColor: '#e2e8f0', padding: '3px 10px', borderRadius: '12px', fontSize: '12px', color: '#444' };
 const smallSelectStyle: React.CSSProperties = { padding: '5px', borderRadius: '4px', border: '1px solid #ddd', backgroundColor: 'white' };
@@ -25,17 +24,14 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // データ用
   const [docs, setDocs] = useState<any[]>([]);
-  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [customTags, setCustomTags] = useState<{id: string, name: string}[]>([]); // idも保持するように変更
   
-  // 入力フォーム用
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [newTagName, setNewTagName] = useState('');
 
-  // 検索・並び替え用
   const [filterTag, setFilterTag] = useState('すべて');
   const [sortOrder, setSortOrder] = useState('newest');
 
@@ -53,11 +49,10 @@ export default function Home() {
     const { data: docsData } = await supabase.from('documents').select('*');
     if (docsData) setDocs(docsData);
 
-    const { data: tagsData } = await supabase.from('custom_tags').select('name');
+    const { data: tagsData } = await supabase.from('custom_tags').select('id, name');
     if (tagsData) {
-      const names = tagsData.map(t => t.name);
-      setCustomTags(names);
-      if (names.length > 0) setSelectedTag(names[0]);
+      setCustomTags(tagsData);
+      if (tagsData.length > 0 && !selectedTag) setSelectedTag(tagsData[0].name);
     }
   };
 
@@ -77,24 +72,21 @@ export default function Home() {
     if (!newTagName) return;
     const { error } = await supabase.from('custom_tags').insert([{ name: newTagName }]);
     if (error) alert('タグの追加に失敗しました。');
-    else {
-      setNewTagName('');
-      await fetchData();
-    }
+    else { setNewTagName(''); await fetchData(); }
+  };
+
+  // --- タグの削除機能 ---
+  const handleDeleteTag = async (id: string, name: string) => {
+    if (!confirm(`タグ「${name}」を削除しますか？このタグが付いている書類は「タグなし」の状態になります。`)) return;
+    const { error } = await supabase.from('custom_tags').delete().eq('id', id);
+    if (error) alert('タグの削除に失敗しました。');
+    else await fetchData();
   };
 
   const handleSaveDoc = async () => {
-    if (!title || !selectedTag) {
-      alert('書類名とタグを入力してください');
-      return;
-    }
+    if (!title || !selectedTag) return alert('入力が不足しています');
     const { error } = await supabase.from('documents').insert([{ title, tags: [selectedTag], url }]);
-    if (!error) {
-      setTitle('');
-      setUrl('');
-      await fetchData();
-      alert('保存しました！');
-    }
+    if (!error) { setTitle(''); setUrl(''); await fetchData(); }
   };
 
   const handleDeleteDoc = async (id: string) => {
@@ -103,7 +95,6 @@ export default function Home() {
     if (!error) await fetchData();
   };
 
-  // --- 表示用のデータ加工（検索・ソート） ---
   const displayDocs = docs
     .filter(doc => filterTag === 'すべて' || (doc.tags && doc.tags.includes(filterTag)))
     .sort((a, b) => {
@@ -115,7 +106,6 @@ export default function Home() {
 
   if (loading) return <div style={{ padding: '50px' }}>読み込み中...</div>;
 
-  // --- ログイン画面 ---
   if (!user) {
     return (
       <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' }}>
@@ -129,7 +119,6 @@ export default function Home() {
     );
   }
 
-  // --- メイン画面 ---
   return (
     <main style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
@@ -137,43 +126,49 @@ export default function Home() {
         <button onClick={handleLogout} style={secondaryButtonStyle}>ログアウト</button>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '30px' }}>
-        {/* 左カラム：管理 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '30px' }}>
         <aside>
+          {/* タグ管理セクション */}
           <div style={sideSectionStyle}>
-            <h3 style={{ marginTop: 0, fontSize: '16px' }}>🏷️ タグを追加</h3>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="タグ名" style={inputStyle} />
+            <h3 style={{ marginTop: 0, fontSize: '16px' }}>🏷️ タグ管理</h3>
+            <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+              <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="新タグ名" style={inputStyle} />
               <button onClick={handleAddTag} style={buttonStyle}>追加</button>
+            </div>
+            {/* タグ一覧と削除ボタン */}
+            <div style={{ maxHeight: '150px', overflowY: 'auto', backgroundColor: 'white', padding: '10px', borderRadius: '4px', border: '1px solid #eee' }}>
+              {customTags.map(tag => (
+                <div key={tag.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px', fontSize: '13px' }}>
+                  <span>{tag.name}</span>
+                  <button onClick={() => handleDeleteTag(tag.id, tag.name)} style={{ ...deleteButtonStyle, padding: '2px 5px' }}>消す</button>
+                </div>
+              ))}
             </div>
           </div>
 
           <div style={sideSectionStyle}>
             <h3 style={{ marginTop: 0, fontSize: '16px' }}>📄 書類を登録</h3>
-            <label style={{ fontSize: '12px', color: '#666' }}>タイトル</label>
-            <input value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-            <label style={{ fontSize: '12px', color: '#666' }}>タグ</label>
+            <input placeholder="タイトル" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
             <select value={selectedTag} onChange={e => setSelectedTag(e.target.value)} style={inputStyle}>
-              {customTags.map(t => <option key={t} value={t}>{t}</option>)}
+              {customTags.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
             </select>
-            <label style={{ fontSize: '12px', color: '#666' }}>URL</label>
-            <input value={url} onChange={e => setUrl(e.target.value)} style={inputStyle} />
-            <button onClick={handleSaveDoc} style={{ ...buttonStyle, width: '100%', marginTop: '10px' }}>保存する</button>
+            <input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} style={inputStyle} />
+            <button onClick={handleSaveDoc} style={{ ...buttonStyle, width: '100%', marginTop: '10px' }}>書類を保存</button>
           </div>
         </aside>
 
-        {/* 右カラム：表示 */}
         <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+          {/* 検索・並び替え */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', backgroundColor: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px' }}>🔍 絞り込み:</span>
+              <span style={{ fontSize: '13px' }}>🔍 絞り込み:</span>
               <select value={filterTag} onChange={e => setFilterTag(e.target.value)} style={smallSelectStyle}>
                 <option value="すべて">すべてのタグ</option>
-                {customTags.map(t => <option key={t} value={t}>{t}</option>)}
+                {customTags.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px' }}>🔃 並び替え:</span>
+              <span style={{ fontSize: '13px' }}>🔃 並び替え:</span>
               <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={smallSelectStyle}>
                 <option value="newest">新しい順</option>
                 <option value="oldest">古い順</option>
