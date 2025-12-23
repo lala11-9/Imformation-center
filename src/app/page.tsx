@@ -54,13 +54,10 @@ export default function Home() {
   const handleSave = async () => {
     if (!title || !selectedTag) return alert('タイトルとタグは必須です');
     
-    // 保存時のラベルを統一（全角・半角のミスを防ぐ）
-    const typeLabel = inputMode === '書類' ? '📄書類' : '💡ナレッジ';
-    const finalTags = inputMode === '書類' ? [selectedTag, visibility] : [selectedTag];
-    
+    // 保存処理
     const { error } = await supabase.from('documents').insert([{
-      title: `${typeLabel}: ${title}`,
-      tags: finalTags,
+      title: title, // 余計な絵文字を付けずに保存
+      tags: inputMode === '書類' ? [selectedTag, visibility] : [selectedTag],
       url: inputMode === '書類' ? url : '',
       memo: memo
     }]);
@@ -80,22 +77,20 @@ export default function Home() {
     else { setNewTagName(''); fetchData(); alert('タグを追加しました'); }
   };
 
-  // --- 表示用のフィルタリング（ここを大幅に強化） ---
+  // --- ★重要：仕分けロジックの改善★ ---
   const filteredDocs = docs.filter(doc => {
-    // 1. タブの仕分け判定
+    // 1. タブによる仕分け（URLの有無で判定するので絶対確実）
     let matchesTab = true;
     if (displayTab === '書類') {
-      // タイトルに「📄」または「書類」が含まれていればOK
-      matchesTab = doc.title.includes('📄') || doc.title.includes('書類');
+      matchesTab = doc.url && doc.url.length > 0; // URLがあれば書類
     } else if (displayTab === 'ナレッジ') {
-      // タイトルに「💡」または「ナレッジ」が含まれていればOK
-      matchesTab = doc.title.includes('💡') || doc.title.includes('ナレッジ');
+      matchesTab = !doc.url || doc.url.length === 0; // URLがなければナレッジ
     }
 
     // 2. 検索キーワード判定
     const matchesSearch = 
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.memo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.memo || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.tags?.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesTab && matchesSearch;
@@ -109,6 +104,8 @@ export default function Home() {
       
       {/* 入力エリア */}
       <section style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px', border: '1px solid #e2e8f0' }}>
+        <h2 style={{ fontSize: '18px', marginBottom: '15px', fontWeight: 'bold' }}>✨ 資産登録</h2>
+        
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setInputMode('書類')} style={{ ...buttonStyle, backgroundColor: inputMode === '書類' ? '#2383e2' : '#f1f5f9', color: inputMode === '書類' ? 'white' : '#64748b', flex: 1 }}>📄 書類モード</button>
           <button onClick={() => setInputMode('ナレッジ')} style={{ ...buttonStyle, backgroundColor: inputMode === 'ナレッジ' ? '#2383e2' : '#f1f5f9', color: inputMode === 'ナレッジ' ? 'white' : '#64748b', flex: 1 }}>💡 ナレッジモード</button>
@@ -130,13 +127,13 @@ export default function Home() {
                 </select>
               )}
             </div>
-            {inputMode === '書類' && <input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />}
+            {inputMode === '書類' && <input placeholder="URLを貼り付け" value={url} onChange={e => setUrl(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />}
             
             <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
               <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>🏷️ {inputMode}用タグ追加</p>
               <div style={{ display: 'flex', gap: '5px' }}>
                 <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="タグ名" style={{ ...inputStyle, backgroundColor: 'white' }} />
-                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px' }}>追加</button>
+                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>追加</button>
               </div>
             </div>
           </div>
@@ -167,10 +164,10 @@ export default function Home() {
                     <span key={t} style={{ fontSize: '11px', backgroundColor: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>{t}</span>
                   ))}
                 </div>
-                <button onClick={async () => { if(confirm('削除しますか？')) { await supabase.from('documents').delete().eq('id', doc.id); fetchData(); } }} style={{ border: 'none', background: 'none', color: '#cbd5e1', fontSize: '12px' }}>削除</button>
+                <button onClick={async () => { if(confirm('削除しますか？')) { await supabase.from('documents').delete().eq('id', doc.id); fetchData(); } }} style={{ border: 'none', background: 'none', color: '#cbd5e1', fontSize: '12px', cursor: 'pointer' }}>削除</button>
               </div>
               <h3 style={{ fontSize: '17px', margin: '0 0 10px 0', fontWeight: 'bold' }}>
-                {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title.includes(': ') ? doc.title.split(': ')[1] : doc.title}</a> : (doc.title.includes(': ') ? doc.title.split(': ')[1] : doc.title)}
+                {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>📄 {doc.title}</a> : `💡 ${doc.title}`}
               </h3>
               <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' }}>{doc.memo}</div>
             </div>
