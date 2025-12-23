@@ -8,13 +8,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- スタイル定義 ---
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', marginBottom: '10px', boxSizing: 'border-box', fontSize: '14px' };
-const buttonStyle: React.CSSProperties = { backgroundColor: '#2383e2', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' };
-const stepButtonStyle: React.CSSProperties = { backgroundColor: 'white', color: '#334155', border: '2px solid #e2e8f0', padding: '15px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: 'bold', fontSize: '15px' };
-const sideSectionStyle: React.CSSProperties = { backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' };
-const tagBadgeStyle: React.CSSProperties = { backgroundColor: '#f1f5f9', padding: '4px 10px', borderRadius: '12px', fontSize: '11px', color: '#475569', fontWeight: 'bold' };
-const lockBadgeStyle: React.CSSProperties = { backgroundColor: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', marginLeft: '5px' };
+// --- スタイル ---
+const inputStyle: React.CSSProperties = { padding: '10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px', width: '100%', boxSizing: 'border-box' };
+const buttonStyle: React.CSSProperties = { backgroundColor: '#2383e2', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' };
+const cardStyle: React.CSSProperties = { backgroundColor: 'white', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' };
+const sectionTitleStyle: React.CSSProperties = { fontSize: '18px', fontWeight: 'bold', marginBottom: '15px', borderLeft: '4px solid #2383e2', paddingLeft: '10px' };
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -22,18 +20,18 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [docs, setDocs] = useState<any[]>([]);
-  const [customTags, setCustomTags] = useState<{id: string, name: string, type: string}[]>([]);
+  const [customTags, setCustomTags] = useState<any[]>([]);
   
-  const [step, setStep] = useState(1);
-  const [docType, setDocType] = useState<'書類' | 'ナレッジ' | 'ミニ'>('書類');
-  const [visibility, setVisibility] = useState('非公開');
-
+  // 入力用（書類/ナレッジ共通）
+  const [inputMode, setInputMode] = useState<'書類' | 'ナレッジ'>('書類');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [memo, setMemo] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
-  const [newTagName, setNewTagName] = useState('');
-  const [filterTag, setFilterTag] = useState('すべて');
+  const [visibility, setVisibility] = useState('非公開');
+  
+  // 検索用
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const checkUser = async () => {
@@ -46,160 +44,120 @@ export default function Home() {
   }, []);
 
   const fetchData = async () => {
-    const { data: docsData } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
-    if (docsData) setDocs(docsData);
-    const { data: tagsData } = await supabase.from('custom_tags').select('*');
-    if (tagsData) setCustomTags(tagsData);
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert('ログイン失敗: ' + error.message);
-    else window.location.reload();
+    const { data: d } = await supabase.from('documents').select('*').order('created_at', { ascending: false });
+    if (d) setDocs(d);
+    const { data: t } = await supabase.from('custom_tags').select('*');
+    if (t) setCustomTags(t);
   };
 
   const handleSave = async () => {
     if (!title || !selectedTag) return alert('タイトルとタグは必須です');
-
-    const finalTags = docType === '書類' ? [selectedTag, visibility] : [selectedTag];
-    const displayTitle = docType === '書類' ? title : `【${docType}】${title}`;
-
-    // エラー回避のため user_id 列がない場合はここから user_id を消してください
+    const typeLabel = inputMode === '書類' ? '📄書類' : '💡ナレッジ';
+    const finalTags = inputMode === '書類' ? [selectedTag, visibility] : [selectedTag];
+    
     const { error } = await supabase.from('documents').insert([{
-      title: displayTitle,
+      title: `${typeLabel}: ${title}`,
       tags: finalTags,
-      url: docType === '書類' ? url : '',
-      memo: memo,
-      // user_id: user.id  // ← テーブルに user_id 列がない場合はここをコメントアウト
+      url: inputMode === '書類' ? url : '',
+      memo: memo
     }]);
 
     if (!error) {
       alert('保存しました！');
-      setTitle(''); setUrl(''); setMemo(''); setStep(1);
-      await fetchData();
-    } else {
-      alert('エラー: ' + error.message);
+      setTitle(''); setUrl(''); setMemo(''); fetchData();
     }
   };
 
-  // --- タグの使い分けロジック ---
-  // 書類の時は「公開範囲など」、ナレッジの時は「技術分野など」を出すイメージ
-  const filteredTagsForInput = customTags.filter(t => {
-    if (docType === '書類') return t.type === '書類' || !t.type;
-    return t.type === 'ナレッジ' || !t.type;
-  });
+  // 検索フィルタリング
+  const filteredDocs = docs.filter(doc => 
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.memo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    doc.tags?.some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>読み込み中...</div>;
 
   if (!user) {
     return (
       <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc' }}>
-        <form onSubmit={handleLogin} style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', width: '350px' }}>
-          <h1 style={{ marginBottom: '20px', fontSize: '22px', textAlign: 'center' }}>📁 ログイン</h1>
+        <form onSubmit={(e) => { e.preventDefault(); supabase.auth.signInWithPassword({ email, password }).then(() => window.location.reload()); }} style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', width: '320px' }}>
+          <h2 style={{ textAlign: 'center' }}>ログイン</h2>
           <input type="email" placeholder="メール" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
-          <input type="password" placeholder="パスワード" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} />
-          <button type="submit" style={{ ...buttonStyle, width: '100%' }}>ログイン</button>
+          <input type="password" placeholder="パスワード" value={password} onChange={e => setPassword(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />
+          <button type="submit" style={{ ...buttonStyle, width: '100%', marginTop: '20px' }}>ログイン</button>
         </form>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold' }}>📁 ナレッジ・アーカイブ</h1>
-        <button onClick={() => supabase.auth.signOut().then(() => window.location.reload())} style={{ background: 'none', border: '1px solid #ccc', padding: '5px 10px', borderRadius: '4px' }}>ログアウト</button>
-      </header>
+    <main style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#fbfcfd' }}>
+      
+      {/* 1. 入力エリア（上部に配置） */}
+      <section style={{ backgroundColor: 'white', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <button onClick={() => { setInputMode('書類'); setMemo(''); }} style={{ ...buttonStyle, backgroundColor: inputMode === '書類' ? '#2383e2' : '#e2e8f0', color: inputMode === '書類' ? 'white' : '#64748b', flex: 1 }}>📄 書類を登録</button>
+          <button onClick={() => { setInputMode('ナレッジ'); setMemo("【Q】\n\n【A】"); }} style={{ ...buttonStyle, backgroundColor: inputMode === 'ナレッジ' ? '#2383e2' : '#e2e8f0', color: inputMode === 'ナレッジ' ? 'white' : '#64748b', flex: 1 }}>💡 ナレッジを登録</button>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '30px' }}>
-        <aside>
-          <div style={sideSectionStyle}>
-            <h2 style={{ fontSize: '15px', marginBottom: '15px', color: '#475569' }}>
-              Step {step}: {step === 1 ? "種類を選択" : step === 2 ? "公開範囲" : "詳細入力"}
-            </h2>
-
-            {step === 1 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button onClick={() => { setDocType('書類'); setStep(2); }} style={stepButtonStyle}>📄 書類を登録</button>
-                <button onClick={() => { setDocType('ナレッジ'); setMemo("【Q】\n\n【A】"); setStep(3); }} style={stepButtonStyle}>💡 ナレッジを登録</button>
-                <button onClick={() => { setDocType('ミニ'); setMemo("【Q】\n\n【A】"); setStep(3); }} style={stepButtonStyle}>⚡ ミニナレッジを登録</button>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button onClick={() => { setVisibility('一般公開'); setStep(3); }} style={stepButtonStyle}>🌍 一般公開</button>
-                <button onClick={() => { setVisibility('限定公開'); setStep(3); }} style={stepButtonStyle}>👥 限定公開</button>
-                <button onClick={() => { setVisibility('非公開'); setStep(3); }} style={stepButtonStyle}>🔒 非公開</button>
-                <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#666', marginTop: '10px' }}>← 戻る</button>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div>
-                <div style={{ fontSize: '12px', marginBottom: '10px', color: '#2383e2' }}>
-                  モード: <strong>{docType}</strong> {docType === '書類' && `[${visibility}]`}
-                </div>
-                <input placeholder="タイトル" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-                <select value={selectedTag} onChange={e => setSelectedTag(e.target.value)} style={inputStyle}>
-                  <option value="">タグを選択してください</option>
-                  {filteredTagsForInput.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+          <div>
+            <input placeholder="タイトル" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
+            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <select value={selectedTag} onChange={e => setSelectedTag(e.target.value)} style={inputStyle}>
+                <option value="">タグを選択</option>
+                {customTags.filter(t => inputMode === '書類' ? t.type === '書類' : t.type === 'ナレッジ').map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+              </select>
+              {inputMode === '書類' && (
+                <select value={visibility} onChange={e => setVisibility(e.target.value)} style={inputStyle}>
+                  <option value="一般公開">🌍 一般</option>
+                  <option value="限定公開">👥 限定</option>
+                  <option value="非公開">🔒 非公開</option>
                 </select>
-                {docType === '書類' && <input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} style={inputStyle} />}
-                <textarea placeholder="内容" value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: '150px' }} />
-                <button onClick={handleSave} style={{ ...buttonStyle, width: '100%' }}>資産を保存</button>
-                <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#666', width: '100%', marginTop: '10px' }}>キャンセル</button>
-              </div>
-            )}
-          </div>
-
-          <div style={sideSectionStyle}>
-            <h3 style={{ fontSize: '13px', marginBottom: '10px' }}>🏷️ 新しいタグを追加</h3>
-            <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="タグ名" style={inputStyle} />
-            <div style={{ display: 'flex', gap: '5px' }}>
-              <button onClick={async () => {
-                await supabase.from('custom_tags').insert([{ name: newTagName, type: '書類' }]);
-                setNewTagName(''); fetchData();
-              }} style={{ ...buttonStyle, flex: 1, backgroundColor: '#64748b' }}>書類用</button>
-              <button onClick={async () => {
-                await supabase.from('custom_tags').insert([{ name: newTagName, type: 'ナレッジ' }]);
-                setNewTagName(''); fetchData();
-              }} style={{ ...buttonStyle, flex: 1, backgroundColor: '#64748b' }}>ナレッジ用</button>
+              )}
             </div>
+            {inputMode === '書類' && <input placeholder="URLをペースト" value={url} onChange={e => setUrl(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />}
           </div>
-        </aside>
-
-        <section>
-          <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between' }}>
-            <select value={filterTag} onChange={e => setFilterTag(e.target.value)} style={{ padding: '5px' }}>
-              <option value="すべて">すべての分野</option>
-              {customTags.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-            </select>
+          <div>
+            <textarea placeholder="内容・詳細メモ" value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: inputMode === '書類' ? '85px' : '130px', resize: 'none' }} />
+            <button onClick={handleSave} style={{ ...buttonStyle, width: '100%', marginTop: '10px' }}>資産として保存する</button>
           </div>
+        </div>
+      </section>
 
-          <div style={{ display: 'grid', gap: '20px' }}>
-            {docs.filter(d => filterTag === 'すべて' || d.tags?.includes(filterTag)).map(doc => (
-              <div key={doc.id} style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+      {/* 2. 検索・表示エリア */}
+      <section>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '20px' }}>📚 蓄積データ一覧</h2>
+          <input 
+            placeholder="🔍 キーワード、タグ、内容で検索..." 
+            value={searchQuery} 
+            onChange={e => setSearchQuery(e.target.value)} 
+            style={{ ...inputStyle, width: '300px', backgroundColor: '#fff' }} 
+          />
+        </div>
+
+        <div style={{ display: 'grid', gap: '15px' }}>
+          {filteredDocs.length > 0 ? filteredDocs.map(doc => (
+            <div key={doc.id} style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
                   {doc.tags?.map((t: string) => (
-                    <span key={t} style={tagBadgeStyle}>
-                      {t}
-                      {t === '非公開' && <span style={lockBadgeStyle}>🔒</span>}
-                    </span>
+                    <span key={t} style={{ fontSize: '11px', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>{t}</span>
                   ))}
                 </div>
-                <h2 style={{ fontSize: '18px', margin: '0 0 10px 0' }}>
-                  {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title}</a> : doc.title}
-                </h2>
-                <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '15px', borderRadius: '8px' }}>
-                  {doc.memo}
-                </div>
+                <span style={{ fontSize: '11px', color: '#94a3b8' }}>{new Date(doc.created_at).toLocaleDateString()}</span>
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              <h3 style={{ fontSize: '17px', margin: '0 0 10px 0' }}>
+                {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title}</a> : doc.title}
+              </h3>
+              <div style={{ fontSize: '14px', color: '#475569', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '6px' }}>
+                {doc.memo}
+              </div>
+            </div>
+          )) : <p style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>該当するデータが見つかりません</p>}
+        </div>
+      </section>
     </main>
   );
 }
