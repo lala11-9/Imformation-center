@@ -14,7 +14,7 @@ const buttonStyle: React.CSSProperties = { backgroundColor: '#2383e2', color: 'w
 const cardStyle: React.CSSProperties = { backgroundColor: 'white', border: '1px solid #e2e8f0', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' };
 const tabStyle = (active: boolean): React.CSSProperties => ({
   padding: '10px 20px', cursor: 'pointer', borderBottom: active ? '3px solid #2383e2' : '3px solid transparent',
-  color: active ? '#2383e2' : '#64748b', fontWeight: 'bold', transition: '0.2s', backgroundColor: 'transparent', borderLeft: 'none', borderRight: 'none', borderTop: 'none'
+  color: active ? '#2383e2' : '#64748b', fontWeight: 'bold', transition: '0.2s', backgroundColor: 'transparent', border: 'none'
 });
 
 export default function Home() {
@@ -23,7 +23,6 @@ export default function Home() {
   const [docs, setDocs] = useState<any[]>([]);
   const [customTags, setCustomTags] = useState<any[]>([]);
   
-  // 入力用（上部）
   const [inputMode, setInputMode] = useState<'書類' | 'ナレッジ'>('書類');
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -32,7 +31,6 @@ export default function Home() {
   const [visibility, setVisibility] = useState('非公開');
   const [newTagName, setNewTagName] = useState('');
   
-  // 表示・検索用（下部）
   const [displayTab, setDisplayTab] = useState<'すべて' | '書類' | 'ナレッジ'>('すべて');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -75,27 +73,31 @@ export default function Home() {
 
   const handleAddTag = async () => {
     if (!newTagName) return;
+    // 確実に type を保存
     const { error } = await supabase.from('custom_tags').insert([
       { name: newTagName, type: inputMode }
     ]);
     if (error) {
-      alert('タグ追加エラー: ' + error.message);
+      alert('タグ追加失敗: ' + error.message);
     } else {
       setNewTagName('');
       await fetchData();
-      alert(`「${newTagName}」を${inputMode}用として追加しました`);
+      alert(`「${newTagName}」を${inputMode}用タグとして追加しました`);
     }
   };
 
-  // --- フィルタリングロジック（ここが重要） ---
+  // --- タグの表示フィルタ（ここを改良） ---
+  const filteredTagsForInput = customTags.filter(t => {
+    // typeが一致するか、もしくはtypeが空(NULL)のものは共通タグとして両方に出す
+    return t.type === inputMode || !t.type;
+  });
+
   const filteredDocs = docs.filter(doc => {
-    // 1. タブによる絞り込み
     const matchesTab = 
       displayTab === 'すべて' || 
       (displayTab === '書類' && doc.title.includes('📄書類')) || 
       (displayTab === 'ナレッジ' && doc.title.includes('💡ナレッジ'));
     
-    // 2. 検索ワードによる絞り込み
     const matchesSearch = 
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.memo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,15 +107,13 @@ export default function Home() {
   });
 
   if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>読み込み中...</div>;
-  if (!user) return <div style={{ padding: '50px', textAlign: 'center' }}>ログインしてください</div>;
+  if (!user) return <div style={{ padding: '50px', textAlign: 'center' }}>ログインが必要です</div>;
 
   return (
     <main style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#f8fafc' }}>
       
-      {/* 入力エリア */}
+      {/* 上部：入力エリア */}
       <section style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px', border: '1px solid #e2e8f0' }}>
-        <h2 style={{ fontSize: '18px', marginBottom: '15px', fontWeight: 'bold' }}>✨ 新規登録</h2>
-        
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setInputMode('書類')} style={{ ...buttonStyle, backgroundColor: inputMode === '書類' ? '#2383e2' : '#f1f5f9', color: inputMode === '書類' ? 'white' : '#64748b', flex: 1 }}>📄 書類モード</button>
           <button onClick={() => setInputMode('ナレッジ')} style={{ ...buttonStyle, backgroundColor: inputMode === 'ナレッジ' ? '#2383e2' : '#f1f5f9', color: inputMode === 'ナレッジ' ? 'white' : '#64748b', flex: 1 }}>💡 ナレッジモード</button>
@@ -125,7 +125,7 @@ export default function Home() {
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
               <select value={selectedTag} onChange={e => setSelectedTag(e.target.value)} style={inputStyle}>
                 <option value="">タグを選択</option>
-                {customTags.filter(t => t.type === inputMode).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                {filteredTagsForInput.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
               </select>
               {inputMode === '書類' && (
                 <select value={visibility} onChange={e => setVisibility(e.target.value)} style={inputStyle}>
@@ -137,29 +137,28 @@ export default function Home() {
             </div>
             {inputMode === '書類' && <input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />}
             
-            <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>🏷️ {inputMode}タグ追加</p>
+            <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+              <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>🏷️ {inputMode}用タグを追加</p>
               <div style={{ display: 'flex', gap: '5px' }}>
-                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} style={{ ...inputStyle, backgroundColor: 'white' }} />
-                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px' }}>追加</button>
+                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="新しいタグ名" style={{ ...inputStyle, backgroundColor: 'white' }} />
+                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>追加</button>
               </div>
             </div>
           </div>
-
           <div>
-            <textarea placeholder="内容..." value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: '180px', resize: 'none' }} />
-            <button onClick={handleSave} style={{ ...buttonStyle, width: '100%', marginTop: '10px', height: '40px' }}>保存</button>
+            <textarea placeholder="内容..." value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: '185px', resize: 'none' }} />
+            <button onClick={handleSave} style={{ ...buttonStyle, width: '100%', marginTop: '10px', height: '40px' }}>保存する</button>
           </div>
         </div>
       </section>
 
-      {/* 表示エリア */}
+      {/* 下部：一覧エリア */}
       <section style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', gap: '20px' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '5px' }}>
             <button onClick={() => setDisplayTab('すべて')} style={tabStyle(displayTab === 'すべて')}>すべて</button>
-            <button onClick={() => setDisplayTab('書類')} style={tabStyle(displayTab === '書類')}>📄 書類のみ</button>
-            <button onClick={() => setDisplayTab('ナレッジ')} style={tabStyle(displayTab === 'ナレッジ')}>💡 ナレッジのみ</button>
+            <button onClick={() => setDisplayTab('書類')} style={tabStyle(displayTab === '書類')}>📄 書類</button>
+            <button onClick={() => setDisplayTab('ナレッジ')} style={tabStyle(displayTab === 'ナレッジ')}>💡 ナレッジ</button>
           </div>
           <input placeholder="🔍 検索..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ ...inputStyle, width: '200px' }} />
         </div>
@@ -167,8 +166,8 @@ export default function Home() {
         <div style={{ display: 'grid', gap: '15px' }}>
           {filteredDocs.map(doc => (
             <div key={doc.id} style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', gap: '5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
                   {doc.tags?.map((t: string) => (
                     <span key={t} style={{ fontSize: '11px', backgroundColor: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>{t}</span>
                   ))}
@@ -178,7 +177,7 @@ export default function Home() {
               <h3 style={{ fontSize: '17px', margin: '0 0 10px 0', fontWeight: 'bold' }}>
                 {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title.split(': ')[1] || doc.title}</a> : (doc.title.split(': ')[1] || doc.title)}
               </h3>
-              <div style={{ fontSize: '14px', color: '#475569', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' }}>{doc.memo}</div>
+              <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' }}>{doc.memo}</div>
             </div>
           ))}
         </div>
