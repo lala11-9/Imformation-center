@@ -53,11 +53,13 @@ export default function Home() {
 
   const handleSave = async () => {
     if (!title || !selectedTag) return alert('タイトルとタグは必須です');
-    const typePrefix = inputMode === '書類' ? '📄書類' : '💡ナレッジ';
+    
+    // 保存時のラベルを統一（全角・半角のミスを防ぐ）
+    const typeLabel = inputMode === '書類' ? '📄書類' : '💡ナレッジ';
     const finalTags = inputMode === '書類' ? [selectedTag, visibility] : [selectedTag];
     
     const { error } = await supabase.from('documents').insert([{
-      title: `${typePrefix}: ${title}`,
+      title: `${typeLabel}: ${title}`,
       tags: finalTags,
       url: inputMode === '書類' ? url : '',
       memo: memo
@@ -73,31 +75,24 @@ export default function Home() {
 
   const handleAddTag = async () => {
     if (!newTagName) return;
-    // 確実に type を保存
-    const { error } = await supabase.from('custom_tags').insert([
-      { name: newTagName, type: inputMode }
-    ]);
-    if (error) {
-      alert('タグ追加失敗: ' + error.message);
-    } else {
-      setNewTagName('');
-      await fetchData();
-      alert(`「${newTagName}」を${inputMode}用タグとして追加しました`);
-    }
+    const { error } = await supabase.from('custom_tags').insert([{ name: newTagName, type: inputMode }]);
+    if (error) alert('タグ追加失敗: ' + error.message);
+    else { setNewTagName(''); fetchData(); alert('タグを追加しました'); }
   };
 
-  // --- タグの表示フィルタ（ここを改良） ---
-  const filteredTagsForInput = customTags.filter(t => {
-    // typeが一致するか、もしくはtypeが空(NULL)のものは共通タグとして両方に出す
-    return t.type === inputMode || !t.type;
-  });
-
+  // --- 表示用のフィルタリング（ここを大幅に強化） ---
   const filteredDocs = docs.filter(doc => {
-    const matchesTab = 
-      displayTab === 'すべて' || 
-      (displayTab === '書類' && doc.title.includes('📄書類')) || 
-      (displayTab === 'ナレッジ' && doc.title.includes('💡ナレッジ'));
-    
+    // 1. タブの仕分け判定
+    let matchesTab = true;
+    if (displayTab === '書類') {
+      // タイトルに「📄」または「書類」が含まれていればOK
+      matchesTab = doc.title.includes('📄') || doc.title.includes('書類');
+    } else if (displayTab === 'ナレッジ') {
+      // タイトルに「💡」または「ナレッジ」が含まれていればOK
+      matchesTab = doc.title.includes('💡') || doc.title.includes('ナレッジ');
+    }
+
+    // 2. 検索キーワード判定
     const matchesSearch = 
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.memo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -112,7 +107,7 @@ export default function Home() {
   return (
     <main style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto', fontFamily: 'sans-serif', backgroundColor: '#f8fafc' }}>
       
-      {/* 上部：入力エリア */}
+      {/* 入力エリア */}
       <section style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setInputMode('書類')} style={{ ...buttonStyle, backgroundColor: inputMode === '書類' ? '#2383e2' : '#f1f5f9', color: inputMode === '書類' ? 'white' : '#64748b', flex: 1 }}>📄 書類モード</button>
@@ -125,7 +120,7 @@ export default function Home() {
             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
               <select value={selectedTag} onChange={e => setSelectedTag(e.target.value)} style={inputStyle}>
                 <option value="">タグを選択</option>
-                {filteredTagsForInput.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                {customTags.filter(t => t.type === inputMode || !t.type).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
               </select>
               {inputMode === '書類' && (
                 <select value={visibility} onChange={e => setVisibility(e.target.value)} style={inputStyle}>
@@ -138,10 +133,10 @@ export default function Home() {
             {inputMode === '書類' && <input placeholder="URL" value={url} onChange={e => setUrl(e.target.value)} style={{ ...inputStyle, marginTop: '10px' }} />}
             
             <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-              <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>🏷️ {inputMode}用タグを追加</p>
+              <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', marginBottom: '5px' }}>🏷️ {inputMode}用タグ追加</p>
               <div style={{ display: 'flex', gap: '5px' }}>
-                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="新しいタグ名" style={{ ...inputStyle, backgroundColor: 'white' }} />
-                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px', whiteSpace: 'nowrap' }}>追加</button>
+                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="タグ名" style={{ ...inputStyle, backgroundColor: 'white' }} />
+                <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b', fontSize: '12px' }}>追加</button>
               </div>
             </div>
           </div>
@@ -152,10 +147,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 下部：一覧エリア */}
+      {/* 一覧エリア */}
       <section style={{ backgroundColor: 'white', padding: '20px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '5px' }}>
+          <div style={{ display: 'flex' }}>
             <button onClick={() => setDisplayTab('すべて')} style={tabStyle(displayTab === 'すべて')}>すべて</button>
             <button onClick={() => setDisplayTab('書類')} style={tabStyle(displayTab === '書類')}>📄 書類</button>
             <button onClick={() => setDisplayTab('ナレッジ')} style={tabStyle(displayTab === 'ナレッジ')}>💡 ナレッジ</button>
@@ -172,10 +167,10 @@ export default function Home() {
                     <span key={t} style={{ fontSize: '11px', backgroundColor: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>{t}</span>
                   ))}
                 </div>
-                <button onClick={async () => { if(confirm('削除しますか？')) { await supabase.from('documents').delete().eq('id', doc.id); fetchData(); } }} style={{ border: 'none', background: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px' }}>削除</button>
+                <button onClick={async () => { if(confirm('削除しますか？')) { await supabase.from('documents').delete().eq('id', doc.id); fetchData(); } }} style={{ border: 'none', background: 'none', color: '#cbd5e1', fontSize: '12px' }}>削除</button>
               </div>
               <h3 style={{ fontSize: '17px', margin: '0 0 10px 0', fontWeight: 'bold' }}>
-                {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title.split(': ')[1] || doc.title}</a> : (doc.title.split(': ')[1] || doc.title)}
+                {doc.url ? <a href={doc.url} target="_blank" style={{ color: '#2383e2', textDecoration: 'none' }}>{doc.title.includes(': ') ? doc.title.split(': ')[1] : doc.title}</a> : (doc.title.includes(': ') ? doc.title.split(': ')[1] : doc.title)}
               </h3>
               <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px' }}>{doc.memo}</div>
             </div>
