@@ -94,7 +94,7 @@ export default function Home() {
       <main style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f0f2f5' }}>
         <form onSubmit={handleLogin} style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '320px' }}>
           <h1 style={{ marginBottom: '20px', fontSize: '20px', textAlign: 'center' }}>📁 書類集積所</h1>
-          <input type="email" placeholder="メール" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} required />
+          <input type="email" placeholder="ID" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} required />
           <input type="password" placeholder="パスワード" value={password} onChange={e => setPassword(e.target.value)} style={inputStyle} required />
           <button type="submit" style={{ ...buttonStyle, width: '100%' }}>ログイン</button>
         </form>
