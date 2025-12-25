@@ -187,7 +187,7 @@ export default function Home() {
           
           <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap' }}>
             {doc.memo.includes('Q:') ? (
-              doc.memo.split('\n').map((line, i) => (
+              doc.memo.split('\n').map((line: string, i: number) => (
                 <div key={i} style={{ 
                   padding: '10px', marginBottom: '5px', borderRadius: '5px',
                   backgroundColor: line.startsWith('Q:') ? '#fff1f2' : '#f0f9ff',
