@@ -20,7 +20,6 @@ export default function Home() {
   const [customTags, setCustomTags] = useState<any[]>([]);
   const [inputMode, setInputMode] = useState<'書類' | 'ナレッジ'>('書類');
   
-  // 入力用（Q&A用を追加）
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [memo, setMemo] = useState('');
@@ -30,7 +29,6 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState('');
   const [newTagName, setNewTagName] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [isTagEditMode, setIsTagEditMode] = useState(false);
   const [displayTab, setDisplayTab] = useState<'すべて' | '書類' | 'ナレッジ'>('すべて');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -65,20 +63,15 @@ export default function Home() {
       const { data } = supabase.storage.from('files').getPublicUrl(safeFileName);
       setUrl(data.publicUrl); 
       if (!title) setTitle(file.name);
-      alert("ファイルを受理しました");
     } catch (e: any) { alert(e.message); } finally { setUploading(false); }
   };
 
   const handleSaveDoc = async () => {
     if (!title || !selectedTag) return alert('タイトルとタグを選択してください');
-    
-    // 保存するときにQ&Aを合体させる
     const finalMemo = inputMode === 'ナレッジ' ? `Q: ${question}\nA: ${answer}` : memo;
-
     const { error } = await supabase.from('documents').insert([{
       title, url, memo: finalMemo, tags: [selectedTag, inputMode === '書類' ? 'type:doc' : 'type:knowledge']
     }]);
-    
     if (!error) { 
       setTitle(''); setUrl(''); setMemo(''); setQuestion(''); setAnswer(''); setSelectedTag(''); 
       fetchData(); alert('保存しました'); 
@@ -89,14 +82,20 @@ export default function Home() {
     if (confirm('削除しますか？')) { await supabase.from('documents').delete().eq('id', id); fetchData(); }
   };
 
+  // --- タグ追加機能 ---
   const handleAddTag = async () => {
     if (!newTagName) return;
     await supabase.from('custom_tags').insert([{ name: newTagName, type: inputMode }]);
-    setNewTagName(''); fetchData();
+    setNewTagName(''); 
+    fetchData();
   };
 
+  // --- タグ削除機能 ---
   const handleDeleteTag = async (id: any) => {
-    if (confirm('削除しますか？')) { await supabase.from('custom_tags').delete().eq('id', id); fetchData(); }
+    if (confirm('このタグを削除しますか？')) { 
+      await supabase.from('custom_tags').delete().eq('id', id); 
+      fetchData(); 
+    }
   };
 
   if (!user) {
@@ -117,7 +116,6 @@ export default function Home() {
         <button onClick={() => supabase.auth.signOut()} style={{ ...buttonStyle, backgroundColor: '#ef4444' }}>ログアウト</button>
       </div>
 
-      {/* 入力セクション */}
       <section style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '15px', border: '1px solid #ddd', marginBottom: '30px' }}>
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setInputMode('書類')} style={{ ...buttonStyle, backgroundColor: inputMode === '書類' ? '#2383e2' : '#f1f5f9', color: inputMode === '書類' ? 'white' : '#64748b', flex: 1 }}>📄 書類モード</button>
@@ -144,36 +142,48 @@ export default function Home() {
               {customTags.filter(t => t.type === inputMode).map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
             </select>
 
-            <div style={{ display: 'flex', gap: '5px', marginTop: '10px' }}>
-              <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="新タグ" style={inputStyle} />
-              <button onClick={handleAddTag} style={{ ...buttonStyle, backgroundColor: '#64748b' }}>追加</button>
+            {/* --- タグ追加と削除のボタンを表示 --- */}
+            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+                <input value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="新タグ名" style={{ ...inputStyle, flex: 1 }} />
+                <button onClick={handleAddTag} style={{ ...buttonStyle, padding: '5px 15px', fontSize: '12px', backgroundColor: '#64748b' }}>追加</button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {customTags.filter(t => t.type === inputMode).map(t => (
+                  <span key={t.id} style={{ fontSize: '11px', backgroundColor: '#fff', border: '1px solid #ddd', padding: '2px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}>
+                    {t.name}
+                    <button onClick={() => handleDeleteTag(t.id)} style={{ marginLeft: '5px', border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
           
           <div>
-            {/* ここがQ&Aの入力切り替え部分です */}
             {inputMode === 'ナレッジ' ? (
               <>
                 <textarea placeholder="質問（Q）" value={question} onChange={e => setQuestion(e.target.value)} style={{ ...inputStyle, height: '80px', marginBottom: '10px', borderLeft: '5px solid #ef4444' }} />
                 <textarea placeholder="回答（A）" value={answer} onChange={e => setAnswer(e.target.value)} style={{ ...inputStyle, height: '85px', borderLeft: '5px solid #2383e2' }} />
               </>
             ) : (
-              <textarea placeholder="メモ・詳細" value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: '175px' }} />
+              <textarea placeholder="メモ・詳細" value={memo} onChange={e => setMemo(e.target.value)} style={{ ...inputStyle, height: '185px' }} />
             )}
             <button onClick={handleSaveDoc} style={{ ...buttonStyle, width: '100%', marginTop: '10px' }}>保存する</button>
           </div>
         </div>
       </section>
 
-      {/* 検索と表示 */}
+      {/* 検索 */}
       <input placeholder="🔍 検索..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} style={{ ...inputStyle, marginBottom: '20px' }} />
       
+      {/* タブ */}
       <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>
         {['すべて', '書類', 'ナレッジ'].map(t => (
           <button key={t} onClick={() => setDisplayTab(t as any)} style={{ border: 'none', background: 'none', color: displayTab === t ? '#2383e2' : '#64748b', fontWeight: 'bold', borderBottom: displayTab === t ? '2px solid #2383e2' : 'none', cursor: 'pointer', padding: '10px' }}>{t}</button>
         ))}
       </div>
 
+      {/* 一覧 */}
       {docs.filter(d => {
         const tabMatch = displayTab === 'すべて' || (displayTab === '書類' && d.tags?.includes('type:doc')) || (displayTab === 'ナレッジ' && d.tags?.includes('type:knowledge'));
         const searchMatch = d.title.includes(searchQuery) || d.memo.includes(searchQuery);
@@ -184,15 +194,10 @@ export default function Home() {
           <h3 style={{ margin: '0 0 10px 0' }}>
             {doc.url ? <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ color: '#2383e2', textDecoration: 'none' }}>📄 {doc.title}</a> : `💡 ${doc.title}`}
           </h3>
-          
           <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap' }}>
             {doc.memo.includes('Q:') ? (
               doc.memo.split('\n').map((line: string, i: number) => (
-                <div key={i} style={{ 
-                  padding: '10px', marginBottom: '5px', borderRadius: '5px',
-                  backgroundColor: line.startsWith('Q:') ? '#fff1f2' : '#f0f9ff',
-                  borderLeft: line.startsWith('Q:') ? '4px solid #ef4444' : '4px solid #2383e2'
-                }}>{line}</div>
+                <div key={i} style={{ padding: '8px', marginBottom: '4px', borderRadius: '5px', backgroundColor: line.startsWith('Q:') ? '#fff1f2' : '#f0f9ff', borderLeft: line.startsWith('Q:') ? '4px solid #ef4444' : '4px solid #2383e2' }}>{line}</div>
               ))
             ) : (
               <div style={{ color: '#444' }}>{doc.memo}</div>
