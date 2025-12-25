@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ナレッジ・バンク (Knowledge Bank)
 
-## Getting Started
+社内の「重要書類」と、社員一人ひとりの「知恵（ナレッジ）」を一つに集約し、会社の資産として守るための専用アプリケーションです。
 
-First, run the development server:
+## 開発目的
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+このアプリは、ナレッジや資料などの「情報の散布化」を解決することを目的としたものです。
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+資料やナレッジの集約が手間とならないように簡単に情報を投げ込めるように意識して開発を行いました。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 主な機能
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1.  書類管理モード
+- PDFや画像などのファイルをドラッグ&ドロップで簡単にアップロードできます。
+- アップロードしたファイルはクラウド（Supabase Storage）に安全に保管され、いつでも閲覧可能です。
 
-## Learn More
+### 2.  ナレッジ管理モード
+- 「Q&A」形式で社内のノウハウをテキスト保存できます。
+- マニュアル化されていない「現場の知恵」を素早くメモして共有できます。
 
-To learn more about Next.js, take a look at the following resources:
+### 3.  フレキシブルなタグ管理
+- 業務に合わせて、その場で新しいタグ（分類）を追加・削除できます。
+- 「すべて・書類・ナレッジ」のタブ切り替えと、全文検索機能で必要な情報をすぐに見つけられます。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4.  資産の整理
+- 不要になった書類やナレッジ、間違えて作成したタグは、管理者がその場で削除・整理できます。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+##  使用技術
 
-## Deploy on Vercel
+- **フロントエンド**: Next.js (React), TypeScript
+- **バックエンド/DB**: Supabase (PostgreSQL, Storage, RLS)
+- **スタイリング**: インラインスタイル（高速な動作と柔軟なカスタマイズ）
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+##  使い方
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **登録**: モードを選択し、タイトル、ファイル（またはメモ）、タグを入力して「保存」を押します。
+2. **閲覧**: 下の一覧から目的のデータを探します。タイトルをクリックすると添付ファイルが開きます。
+3. **整理**: 「整理」ボタンを押すと、タグ自体の編集・削除が可能です。
+
+## 将来的な改良・拡張の方針
+- 蓄積したナレッジに基づいたAIチャットボットによる「質問応答機能」
+- AIによる「自動タグ付け・カテゴリ分類」
+- AIによる「ナレッジの鮮度管理・重複検知」
+
+
+---
